@@ -1,0 +1,207 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>NEON DRIFT â€” Corrida Arcade</title>
+<link rel="stylesheet" href="style.css" />
+<script>
+  window.addEventListener('error', function (ev) {
+    var b = document.getElementById('boot-status');
+    if (b) {
+      b.style.display = 'block';
+      b.textContent = 'ERRO: ' + (ev.message || 'desconhecido') +
+        ' â€” ' + String(ev.filename || '').split('/').pop() + ':' + (ev.lineno || 0);
+    }
+    document.documentElement.setAttribute('data-error', ev.message || 'erro');
+  });
+</script>
+<style>#screen-start,#hud,#scanlines,#vignette,#boot-status{display:none!important}</style></head>
+<body data-screen="loading" data-mode="race">
+
+<canvas id="game"></canvas>
+
+<div id="scanlines"></div>
+<div id="vignette"></div>
+<div id="boost-fx"></div>
+
+<!-- ============================ HUD ============================ -->
+<div id="hud">
+
+  <div class="hud-top">
+    <div class="panel hud-panel" id="lap-panel">
+      <span class="label">VOLTA</span>
+      <span class="big" id="lap-val">1/3</span>
+      <span class="sub" id="pos-val">4Âº</span>
+    </div>
+
+    <div class="panel hud-panel" id="time-panel">
+      <span class="label">TEMPO</span>
+      <span class="big mono" id="race-time">00:00.000</span>
+      <span class="sub">MELHOR <b class="mono" id="best-lap">--:--.---</b></span>
+    </div>
+
+    <div id="minimap-wrap" class="panel">
+      <canvas id="minimap" width="220" height="220"></canvas>
+    </div>
+  </div>
+
+  <div id="wrong-way">SENTIDO ERRADO</div>
+
+  <div id="drift-live">
+    <span class="drift-word">DRIFT</span>
+    <span class="drift-mult" id="drift-mult">x1.0</span>
+  </div>
+
+  <div class="hud-bottom">
+    <div id="speed-panel">
+      <div id="speed-val">0</div>
+      <div id="speed-unit">KM/H</div>
+      <div id="gear">N</div>
+    </div>
+
+    <div id="turbo-panel" class="panel">
+      <div class="turbo-head">
+        <span class="label">TURBO</span>
+        <span id="turbo-hint">SHIFT</span>
+      </div>
+      <div class="bar turbo-bar"><div id="turbo-fill"></div></div>
+    </div>
+
+    <div id="score-panel" class="panel">
+      <div class="label">DRIFT SCORE</div>
+      <div id="drift-score">0</div>
+      <div id="combo-note">derrape para carregar o turbo</div>
+    </div>
+  </div>
+
+  <div id="countdown"></div>
+  <div id="toast"></div>
+
+  <!-- controles de toque -->
+  <div id="touch-controls">
+    <div class="tc-side tc-left">
+      <button type="button" class="tc-btn" data-action="left" aria-label="Esquerda">â—€</button>
+      <button type="button" class="tc-btn" data-action="right" aria-label="Direita">â–¶</button>
+    </div>
+    <div class="tc-side tc-right">
+      <button type="button" class="tc-btn small" data-action="drift">DRIFT</button>
+      <button type="button" class="tc-btn small" data-action="boost">TURBO</button>
+      <button type="button" class="tc-btn" data-action="down" aria-label="Freio">â–¼</button>
+      <button type="button" class="tc-btn gas" data-action="up" aria-label="Acelerar">â–²</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ MENU ============================ -->
+<div id="screen-start" class="screen">
+  <div class="start-inner">
+    <header class="logo-wrap">
+      <div class="logo"><span class="l1">NEON</span><span class="l2">DRIFT</span></div>
+      <div class="tagline">CORRIDA ARCADE &nbsp;â€¢&nbsp; 3 VOLTAS &nbsp;â€¢&nbsp; DRIFT Ã‰ TURBO</div>
+    </header>
+
+    <div class="start-grid">
+      <section class="panel menu-panel">
+        <div class="circuit-row">
+          <button type="button" class="arrow" id="circ-prev" aria-label="Circuito anterior">â—€</button>
+          <div class="circuit-info">
+            <div class="label">CIRCUITO</div>
+            <div id="circ-name">01 â€” ORLA NORTE</div>
+            <div class="record">MELHOR VOLTA <b class="mono" id="menu-best">--:--.---</b></div>
+          </div>
+          <button type="button" class="arrow" id="circ-next" aria-label="PrÃ³ximo circuito">â–¶</button>
+        </div>
+
+        <div class="mode-buttons">
+          <button type="button" class="btn primary" id="btn-race">
+            <span>CORRIDA</span><small>3 RIVAIS</small>
+          </button>
+          <button type="button" class="btn" id="btn-tt">
+            <span>CONTRARRELÃ“GIO</span><small>FANTASMA DO RECORDE</small>
+          </button>
+        </div>
+
+        <div class="menu-foot" id="menu-ghost-note">SEM FANTASMA NESTE CIRCUITO</div>
+      </section>
+
+      <section class="panel controls-panel">
+        <h2>CONTROLES</h2>
+        <ul class="keys">
+          <li><kbd>W</kbd><kbd>S</kbd><span>acelerar / frear</span></li>
+          <li><kbd>A</kbd><kbd>D</kbd><span>virar</span></li>
+          <li><kbd>ESPAÃ‡O</kbd><span>drift</span></li>
+          <li><kbd>SHIFT</kbd><span>turbo</span></li>
+          <li><kbd>C</kbd><span>cÃ¢mera</span></li>
+          <li><kbd>M</kbd><span>som</span></li>
+          <li><kbd>ESC</kbd><span>pausar</span></li>
+        </ul>
+        <p class="tip">No drift, a barra de turbo enche. Solte o drift e use o turbo nas retas.</p>
+      </section>
+    </div>
+
+    <footer class="start-footer">
+      <button type="button" class="ghost-btn" id="btn-sound">SOM: LIGADO</button>
+      <span>FEITO PARA RODAR OFFLINE NO NAVEGADOR</span>
+    </footer>
+  </div>
+</div>
+
+<!-- ============================ PAUSA ============================ -->
+<div id="screen-pause" class="screen">
+  <div class="modal panel">
+    <h2>PAUSADO</h2>
+    <p class="modal-sub">Respira. A pista espera.</p>
+    <div class="modal-actions">
+      <button type="button" class="btn primary" id="btn-resume">CONTINUAR</button>
+      <button type="button" class="btn" id="btn-restart-pause">REINICIAR</button>
+      <button type="button" class="btn danger" id="btn-menu-pause">MENU</button>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="ghost-btn" id="btn-sound-pause">SOM: LIGADO</button>
+      <span><kbd>ESC</kbd> continuar &nbsp; <kbd>R</kbd> reiniciar</span>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ FIM DE CORRIDA ============================ -->
+<div id="screen-end" class="screen">
+  <div class="modal end-modal panel">
+    <div class="end-badge" id="end-badge">CORRIDA CONCLUÃDA</div>
+    <h2 id="end-title">1Âº LUGAR!</h2>
+    <p class="modal-sub" id="end-sub">Circuito 01 â€” Orla Norte</p>
+
+    <div class="end-stats">
+      <div class="stat"><span class="label">TEMPO TOTAL</span><b class="mono" id="end-total">00:00.000</b></div>
+      <div class="stat"><span class="label">MELHOR VOLTA</span><b class="mono" id="end-best">00:00.000</b></div>
+      <div class="stat"><span class="label">DRIFT SCORE</span><b id="end-score">0</b></div>
+    </div>
+
+    <div class="record-badge hidden" id="record-badge">NOVO RECORDE!</div>
+
+    <div id="end-standings" class="standings"></div>
+
+    <div class="modal-actions">
+      <button type="button" class="btn primary" id="btn-again">CORRER DE NOVO</button>
+      <button type="button" class="btn" id="btn-menu-end">MENU</button>
+    </div>
+    <div class="modal-foot"><span><kbd>ENTER</kbd> de novo &nbsp; <kbd>ESC</kbd> menu</span></div>
+  </div>
+</div>
+
+<div id="boot-status">CARREGANDO NEON DRIFT...</div>
+
+<script src="lib/three.min.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/input.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/effects.js"></script>
+<script src="js/track.js"></script>
+<script src="js/car.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/ghost.js"></script>
+<script src="js/game.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
+
